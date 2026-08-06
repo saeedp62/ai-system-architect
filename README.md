@@ -1,41 +1,85 @@
 # AI System Architect
 
-Draft an architecture from a use case description using the OpenAI Responses API.
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green)](#license)
+[![CLI](https://img.shields.io/badge/Interface-CLI-orange)](#usage)
 
-## Requirements
+AI System Architect turns a rough use case into a structured architecture draft using the OpenAI Responses API.
+
+## Overview
+
+This project is a CLI tool for converting a short product idea into a practical system architecture. It is designed for engineers, founders, and technical teams who want a fast first-pass design with explicit assumptions, tradeoffs, and implementation guidance.
+
+The generator is opinionated by design:
+
+- It asks for more detail when the prompt is too vague
+- It returns markdown directly to the terminal
+- It uses the OpenAI Responses API with no streaming
+- It loads configuration from `.env`
+
+## Features
+
+- Markdown architecture drafts generated from plain-language prompts
+- OpenAI Responses API integration
+- Environment-based configuration via `.env`
+- Clear handling for empty input and provider errors
+- CLI-first workflow with Typer
+- Structured prompts that encourage explicit assumptions
+
+## Architecture
+
+The application is organized into a small set of focused layers:
+
+- `cli/` handles the command-line interface and user interaction
+- `config/` loads and normalizes environment settings
+- `llm/` creates the OpenAI client
+- `prompts/` stores the system prompt used for generation
+- `services/` contains the architecture generation use case
+- `core/` defines shared exceptions and logging helpers
+
+Request flow:
+
+1. The CLI collects a use case description.
+2. `generate_architecture(user_input)` validates the input.
+3. Settings are loaded from the environment.
+4. The OpenAI client is created with the configured API key.
+5. The system prompt and user input are sent through the Responses API.
+6. The generated markdown is printed to stdout.
+
+## Tech Stack
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
+- [Typer](https://typer.tiangolo.com/)
+- [Rich](https://rich.readthedocs.io/)
+- [python-dotenv](https://saurabh-kumar.com/python-dotenv/)
+- [OpenAI Python SDK](https://github.com/openai/openai-python)
+- Pytest
+- Ruff
 
-## Setup
+## Installation
 
 ```bash
+git clone <your-repo-url>
+cd AI-SYSTEM-ARCHITECT
+
 cp .env.example .env
 
-# Required
+# Set your OpenAI API key
 # OPENAI_API_KEY=your_api_key_here
 
-# Optional
-# OPENAI_BASE_URL=https://api.openai.com/v1
-# OPENAI_MODEL=gpt-4o-mini
-
 uv sync
-uv sync --extra dev   # optional: pytest, ruff
+uv sync --extra dev
 ```
 
-## Configuration
+Optional environment variables:
 
-The app reads configuration from `.env` and environment variables.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | Yes | OpenAI API key used by the Responses API client |
-| `OPENAI_BASE_URL` | No | Optional override for a compatible OpenAI endpoint |
-| `OPENAI_MODEL` | No | Model used for architecture generation |
-| `LOG_LEVEL` | No | Logging verbosity |
-| `OUTPUT_DIR` | No | Directory for generated artifacts |
-
-`OPENAI_BASE_URL` may be left empty, omitted, or set to a full URL like `https://api.openai.com/v1`.
+```bash
+# OPENAI_BASE_URL=https://api.openai.com/v1
+# OPENAI_MODEL=gpt-4o-mini
+# LOG_LEVEL=INFO
+# OUTPUT_DIR=./outputs
+```
 
 ## Usage
 
@@ -43,40 +87,39 @@ The app reads configuration from `.env` and environment variables.
 uv run architect --help
 uv run architect version
 uv run architect generate -d "Customer support chatbot for an IT firm"
-uv run architect   # interactive: prompts for your use case
+uv run architect
 ```
 
-The CLI prints the generated markdown directly to stdout. No streaming is used.
+The interactive command prompts for a use case description. If the brief is too short or omits key details, the generator may ask for clarification instead of producing a generic architecture.
 
-## Input guidance
+## Roadmap
 
-The generator intentionally asks for more detail when the brief is too short or underspecified.
+- Add architecture export to files
+- Add provider health checks and diagnostics
+- Support structured inputs such as deployment target and scale
+- Add evaluation and regression test workflows
+- Add conversation memory and multi-step refinement
 
-If the use case is under roughly 15 meaningful words, or does not say:
-
-- what the system does
-- who uses it
-
-the model returns a short clarification request instead of a generic architecture.
-
-If you want it to proceed anyway, include the phrase `proceed anyway` in the prompt or give a fuller brief with the target users, tasks, and constraints.
-
-## Project layout
-
-```
-src/ai_system_architect/
-  cli/          Typer entrypoints
-  config/       Environment-backed settings
-  core/         Logging and shared exceptions
-  llm/          OpenAI client wiring
-  prompts/      System prompt used by the generator
-  services/     Application use cases
-tests/
-```
-
-## Development
+## Screenshots
 
 ```bash
-uv run ruff check src tests
-uv run pytest
+$ uv run architect
+Describe your AI application.: Customer support chatbot for an IT firm
+Generating architecture...
+
+# Architecture Draft
+
+## 0. Assumptions
+- The chatbot supports external customers and internal support staff.
+- The first release focuses on FAQs and ticket deflection.
+
+## 1. Problem Statement
+...
 ```
+
+Replace this block with real screenshots after you capture terminal output or add a UI later.
+
+## License
+
+This project is licensed under the [MIT License](https://opensource.org/license/mit/).
+Add a `LICENSE` file to the repository when you are ready to publish formally.
