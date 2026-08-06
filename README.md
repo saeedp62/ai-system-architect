@@ -22,6 +22,8 @@ uv sync --extra dev   # optional: pytest, ruff
 ```bash
 uv run architect --help
 uv run architect version
+uv run architect generate -d "My use case here"
+uv run architect   # interactive: prompts for your use case
 ```
 
 ## Project layout

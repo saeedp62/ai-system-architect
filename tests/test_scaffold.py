@@ -14,3 +14,10 @@ def test_settings_from_env(monkeypatch) -> None:
     settings = Settings.from_env()
     assert settings.openai_api_key == "sk-test"
     assert settings.openai_model == "gpt-4o"
+
+
+def test_settings_normalizes_base_url(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OPENAI_BASE_URL", "api.openai.com/v1")
+    settings = Settings.from_env()
+    assert settings.openai_base_url == "https://api.openai.com/v1"

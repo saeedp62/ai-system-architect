@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 from ai_system_architect import __version__
+from ai_system_architect.cli.generate import run_generate_flow
 from ai_system_architect.config.settings import get_settings
 from ai_system_architect.core.exceptions import ConfigurationError
 from ai_system_architect.core.logging import setup_logging
@@ -16,7 +17,8 @@ from ai_system_architect.core.logging import setup_logging
 app = typer.Typer(
     name="architect",
     help="AI System Architect — draft architectures from use case descriptions.",
-    no_args_is_help=True,
+    invoke_without_command=True,
+    no_args_is_help=False,
     add_completion=False,
 )
 console = Console()
@@ -25,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     verbose: Annotated[
         bool,
         typer.Option("--verbose", "-v", help="Enable debug logging."),
@@ -37,6 +40,24 @@ def main(
         os.environ["LOG_LEVEL"] = "DEBUG"
     settings = get_settings(strict=False)
     setup_logging(settings)
+
+    if ctx.invoked_subcommand is None:
+        run_generate_flow(console)
+
+
+@app.command("generate")
+def generate_cmd(
+    description: Annotated[
+        str | None,
+        typer.Option(
+            "--description",
+            "-d",
+            help="Use case text (skips interactive prompt when set).",
+        ),
+    ] = None,
+) -> None:
+    """Describe your application and start architecture generation."""
+    run_generate_flow(console, description=description)
 
 
 @app.command("version")

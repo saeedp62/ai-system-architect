@@ -1,3 +1,5 @@
 """Application use cases (architecture generation, export, etc.)."""
 
-__all__: list[str] = []
+from ai_system_architect.services.architecture import generate_architecture
+
+__all__ = ["generate_architecture"]
