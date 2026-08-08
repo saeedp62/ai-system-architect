@@ -12,6 +12,7 @@ from ai_system_architect import __version__
 from ai_system_architect.cli.generate import run_generate_flow
 from ai_system_architect.config.settings import get_settings
 from ai_system_architect.core.exceptions import ConfigurationError
+from ai_system_architect.core.request import DataSensitivity, DeploymentTarget, Scale
 from ai_system_architect.core.logging import setup_logging
 
 app = typer.Typer(
@@ -55,9 +56,44 @@ def generate_cmd(
             help="Use case text (skips interactive prompt when set).",
         ),
     ] = None,
+    deployment_target: Annotated[
+        DeploymentTarget | None,
+        typer.Option(
+            "--deployment-target",
+            help="Deployment constraint for the architecture draft.",
+        ),
+    ] = None,
+    data_sensitivity: Annotated[
+        DataSensitivity | None,
+        typer.Option(
+            "--data-sensitivity",
+            help="Data sensitivity constraint for the architecture draft.",
+        ),
+    ] = None,
+    scale: Annotated[
+        Scale | None,
+        typer.Option(
+            "--scale",
+            help="Expected operating scale for the architecture draft.",
+        ),
+    ] = None,
+    approved_stack: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--approved-stack",
+            help="Technology name to constrain recommendations. Repeat the flag for multiple items.",
+        ),
+    ] = None,
 ) -> None:
     """Describe your application and start architecture generation."""
-    run_generate_flow(console, description=description)
+    run_generate_flow(
+        console,
+        description=description,
+        deployment_target=deployment_target,
+        data_sensitivity=data_sensitivity,
+        scale=scale,
+        approved_stack=approved_stack,
+    )
 
 
 @app.command("version")
