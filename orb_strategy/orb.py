@@ -24,6 +24,7 @@ class Params:
     target_r: float | None = None  # profit target in R; None = hold to the time exit
     last_entry: str = "12:00"      # no new entries at/after this time
     exit_time: str = "15:55"       # flat by this time, always
+    min_gap_atr: float = 0.0       # require an overnight gap of at least this many ATR14 in the trade direction
     min_or_atr: float = 0.0        # skip days whose range is narrower than this fraction of ATR14
     max_or_atr: float = 9.9        # skip days whose range is wider than this fraction of ATR14
     cost_bps: float = 2.0          # round-trip cost (spread + slippage + fees) in basis points of price
@@ -83,12 +84,18 @@ def run(days: list[dict], p: Params) -> pd.DataFrame:
             bias = b_prev
         else:                         # both must agree, otherwise no trade
             bias = b_open if b_open == b_prev else 0
+        gap = (o[0] - d["pc"]) / atr  # overnight gap in ATRs, known at 09:30
         if p.direction == "both":
             allow_long = allow_short = True
         elif p.direction == "bias":
             allow_long, allow_short = bias > 0, bias < 0
         else:  # fade: trade only against the opening move
             allow_long, allow_short = bias < 0, bias > 0
+
+        if p.min_gap_atr > 0:  # "gap and go": only trade with a gap the first 15 minutes extended
+            allow_long, allow_short = allow_long and gap >= p.min_gap_atr, allow_short and gap <= -p.min_gap_atr
+        if not (allow_long or allow_short):
+            continue
 
         # ---- entry -------------------------------------------------------
         side, entry, i_entry = 0, np.nan, -1
@@ -166,7 +173,7 @@ def run(days: list[dict], p: Params) -> pd.DataFrame:
         r = (gross - cost) / risk
         size = min(p.risk_pct / 100 / (risk / entry), p.max_leverage)  # notional / equity
         rows.append(dict(date=d["date"], side=side, entry=entry, stop=stop, exit=exit_px,
-                         reason=reason, or_atr=width / atr, r=r, gross_r=gross / risk,
+                         reason=reason, or_atr=width / atr, gap_atr=gap, r=r, gross_r=gross / risk,
                          ret=size * (gross - cost) / entry))
     return pd.DataFrame(rows)
 

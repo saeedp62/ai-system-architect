@@ -15,9 +15,11 @@ from orb import Params, build_days, replace, run, split, stats
 SYMBOLS = ["SPX500_USD", "NAS100_USD", "US2000_USD"]
 CUT = "2015-01-01"  # everything from here on was not looked at while choosing the rules
 
-FINAL = Params(direction="bias", bias_ref="agree", entry="stop", stop="mid", target_r=None,
-               last_entry="12:00", exit_time="15:55", cost_bps=1.0, risk_pct=0.5)
-NAIVE = replace(FINAL, direction="both", stop="range")  # textbook ORB: either side, stop at far edge
+V1 = Params(direction="bias", bias_ref="agree", entry="stop", stop="mid", target_r=None,
+            last_entry="12:00", exit_time="15:55", cost_bps=1.0, risk_pct=0.5)
+# v2 "gap and go": v1 plus an overnight gap >= 0.3 ATR that the first 15 minutes extended
+FINAL = replace(V1, bias_ref="open", min_gap_atr=0.3)
+NAIVE = replace(V1, direction="both", stop="range")  # textbook ORB: either side, stop at far edge
 
 
 def day_t(t: pd.DataFrame) -> float:
@@ -46,16 +48,27 @@ if __name__ == "__main__":
         print(HEAD)
         for s in SYMBOLS:
             print(line(s, res[s]))
+        n_days_traded = allt.date.nunique()
         allt = allt.assign(ret=allt.ret / len(SYMBOLS))  # pooled rows split the risk budget three ways
         print(line("all three, risk split /3", allt))
         print(line("  longs only", allt[allt.side > 0]))
         print(line("  shorts only", allt[allt.side < 0]))
         print("-- comparisons, all three pooled")
         for label, p in (("textbook ORB, both sides", NAIVE),
+                         ("v1 (no gap filter)", V1),
+                         ("gap >= 0.2 ATR", replace(FINAL, min_gap_atr=0.2)),
+                         ("gap >= 0.4 ATR", replace(FINAL, min_gap_atr=0.4)),
+                         ("stop at far edge", replace(FINAL, stop="range")),
                          ("final rules, 0 bp cost", replace(FINAL, cost_bps=0)),
                          ("final rules, 2 bp cost", replace(FINAL, cost_bps=2)),
                          ("final rules, 3 bp cost", replace(FINAL, cost_bps=3)),
-                         ("against the bias (fade)", replace(FINAL, direction="fade"))):
+                         ("final rules, 5 bp cost", replace(FINAL, cost_bps=5)),
+                         ("small-gap days (<0.3 ATR)", None)):
+            if p is None:
+                tt = pd.concat([run(part[s], replace(FINAL, min_gap_atr=0)) for s in SYMBOLS])
+                tt = tt[tt.side * tt.gap_atr < 0.3]
+                print(line(label, tt.assign(ret=tt.ret / len(SYMBOLS))))
+                continue
             tt = pd.concat([run(part[s], p) for s in SYMBOLS])
             print(line(label, tt.assign(ret=tt.ret / len(SYMBOLS))))
         yr = allt.groupby(pd.to_datetime(allt.date).dt.year).r.agg(["count", "mean", "sum"]).round(3)
@@ -67,6 +80,7 @@ if __name__ == "__main__":
               .rename(columns={"count": "trades", "mean": "avgR"}).to_string())
         top = allt.r.nlargest(max(1, len(allt) // 100)).sum()
         print(f"best 1% of trades contribute {top:.0f}R of {allt.r.sum():.0f}R total")
+        print("days with at least one trade:", n_days_traded)
         print("exit reasons:", allt.reason.value_counts().to_dict(),
               "| avg winner R:", round(allt.r[allt.r > 0].mean(), 2),
               "| longest losing streak:", int((allt.sort_values("date").r <= 0).astype(int)
