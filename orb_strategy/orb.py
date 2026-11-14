@@ -29,6 +29,7 @@ class Params:
     cost_bps: float = 2.0          # round-trip cost (spread + slippage + fees) in basis points of price
     risk_pct: float = 0.5          # % of equity risked per trade
     max_leverage: float = 4.0
+    min_or_bars: int = 9           # bars required inside the range window (9 of 15 one-minute bars; use 3 for 5-minute data)
 
 
 def _hm(s: str) -> int:
@@ -68,7 +69,7 @@ def run(days: list[dict], p: Params) -> pd.DataFrame:
         if not np.isfinite(atr):
             continue
         in_or = m < or_end
-        if in_or.sum() < p.or_minutes * 0.6 or m[0] > OPEN_MIN + 2:
+        if in_or.sum() < p.min_or_bars or m[0] > OPEN_MIN + 2:
             continue
         orh, orl = h[in_or].max(), l[in_or].min()
         width = orh - orl
